@@ -206,7 +206,7 @@ impl EncKeys {
         let re = RE_KEY_ID.get_or_init(|| Regex::new(r"^[a-zA-Z0-9_-]{2,20}$").unwrap());
 
         for key in raw_enc_keys.split('\n') {
-            if key.ne("") {
+            if !key.is_empty() {
                 let t: (&str, &str) = match key.split_once('/') {
                     None => continue,
                     Some(k) => k,
@@ -214,7 +214,7 @@ impl EncKeys {
                 let id = t.0.trim();
                 let key_raw = t.1.trim();
 
-                if id.eq("") || key_raw.eq("") {
+                if id.is_empty() || key_raw.is_empty() {
                     return Err(CryptrError::Keys(
                         "ENC_KEYS must not be empty. Format: \"<id>/<key> <id>/<key>\"",
                     ));
@@ -419,14 +419,14 @@ impl EncKeys {
         let re = Regex::new(r"^[a-zA-Z0-9]{2,20}$").unwrap();
 
         for k in keys.split(' ') {
-            if k.ne("") {
+            if !k.is_empty() {
                 let t: (&str, &str) = k
                     .split_once('/')
                     .ok_or(CryptrError::Keys("Incorrect format for ENC_KEYS"))?;
                 let id = t.0.trim();
                 let key = t.1.trim();
 
-                if id.eq("") || key.eq("") {
+                if id.is_empty() || key.is_empty() {
                     return Err(CryptrError::Keys(
                         "ENC_KEYS must not be empty. Format: \"<id>/<key> <id>/<key>\"",
                     ));

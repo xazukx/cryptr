@@ -42,7 +42,7 @@ impl EncStreamReader for FileReader<'_> {
         chunk_size: ChunkSizeKb,
         tx: Sender<Result<(LastStreamElement, StreamChunk), CryptrError>>,
     ) -> Result<JoinHandle<Result<(), CryptrError>>, CryptrError> {
-        let mut f = File::open(&self.path).await.unwrap();
+        let mut f = File::open(&self.path).await?;
 
         let meta = f.metadata().await.expect("Reading file metadata");
         #[cfg(not(target_os = "windows"))]
