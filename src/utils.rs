@@ -1,7 +1,6 @@
-use base64::{engine, engine::general_purpose, Engine as _};
-use rand::distributions::Alphanumeric;
-use rand::{Rng, RngCore};
 use crate::CryptrError;
+use base64::{engine, engine::general_purpose, Engine as _};
+use rand::{Rng, TryRngCore};
 
 const B64_STD: engine::GeneralPurpose = general_purpose::STANDARD;
 
@@ -20,7 +19,9 @@ pub fn b64_decode(b64: &str) -> Result<Vec<u8>, CryptrError> {
 /// Fills the given buffer with random bytes
 #[inline]
 pub fn secure_random(buf: &mut [u8]) -> Result<(), CryptrError> {
-    rand::thread_rng().try_fill_bytes(buf)?;
+    rand::rng()
+        .try_fill_bytes(buf)
+        .map_err(|err| CryptrError::Generic(format!("No access to OsRng: {:?}", err)))?;
     Ok(())
 }
 
@@ -36,8 +37,8 @@ pub fn secure_random_vec(size: usize) -> Result<Vec<u8>, CryptrError> {
 /// Returns a random String with the specified size
 #[inline]
 pub fn secure_random_alnum(count: usize) -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
+    rand::rng()
+        .sample_iter(rand::distr::Alphabetic)
         .take(count)
         .map(char::from)
         .collect::<String>()

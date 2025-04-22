@@ -96,7 +96,7 @@ impl EncVersion {
 ///
 /// The very first bytes of every encrypted value contain this header.
 /// This adds a tiny overhead to each value, but it makes the whole system very flexible
-/// in regards to using different keys, encryption mechanism, key rotation, and so on.
+/// in regard to using different keys, encryption mechanism, key rotation, and so on.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EncValueHeader {
     pub version: EncVersion,
@@ -124,6 +124,12 @@ impl EncValueHeader {
         let version = EncVersion::try_from(buf.get_u8())?;
         let alg = EncAlg::try_from(buf.get_u8())?;
         let length = buf.get_u16();
+        if length < 8 {
+            // smallest possible header length is 8 bytes
+            return Err(CryptrError::HeaderInvalid(
+                "Invalid EncValueHeader: header length value too small",
+            ));
+        }
         let chunk_size = ChunkSizeKb::try_from(buf.get_u16())?;
 
         // id_len is the full header length: first 4 fields -> 6 bytes
@@ -151,7 +157,7 @@ impl EncValueHeader {
 
         let mut buf = Bytes::from(buf.to_vec());
         let header = Self::try_extract(&mut buf)?;
-        // let's make sure, that it was encrypted with streaming
+        // make sure, that it was encrypted with streaming
         if header.chunk_size.value() == 0 {
             // TODO automatically switch to in-memory decryption here?
             return Err(CryptrError::HeaderInvalid(
@@ -162,14 +168,14 @@ impl EncValueHeader {
         let nonce_size = match &header.alg {
             EncAlg::ChaCha20Poly1305 => 7,
         };
-
-        // chacha20 stream cipher nonce is 7 bytes
-        let nonce = buf.split_to(nonce_size).to_vec();
-        if nonce.len() != nonce_size {
+        if buf.len() < nonce_size {
             return Err(CryptrError::HeaderInvalid(
                 "Could not extract nonce - too short",
             ));
         }
+
+        let nonce = buf.split_to(nonce_size).to_vec();
+        debug_assert_eq!(nonce.len(), nonce_size);
 
         let offset = (length_orig - buf.len()) as u16;
 

@@ -1,17 +1,14 @@
+use crate::utils::{b64_decode, b64_encode, secure_random_alnum, secure_random_vec};
+use crate::value::EncValue;
+use crate::CryptrError;
+use regex::Regex;
 use std::collections::HashMap;
 use std::env;
 use std::fmt::{Display, Formatter, Write};
 use std::sync::OnceLock;
-
-use regex::Regex;
-use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tokio::fs::File;
 use tracing::error;
-
-use crate::utils::{b64_decode, b64_encode, secure_random_alnum, secure_random_vec};
-use crate::value::EncValue;
-use crate::CryptrError;
 
 static RE_KEY_ID: OnceLock<Regex> = OnceLock::new();
 
@@ -83,7 +80,7 @@ impl EncKeysSealed {
 ///
 /// These can be either used statically initialized for ease of use, or given dynamically each time.
 /// You just need to use the appropriate functions for the `EncValue`.
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, bincode::Encode, bincode::Decode)]
 pub struct EncKeys {
     pub enc_key_active: String,
     pub enc_keys: Vec<(String, Vec<u8>)>,
@@ -93,7 +90,11 @@ impl TryFrom<&[u8]> for EncKeys {
     type Error = CryptrError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let slf: Self = bincode::deserialize(value)?;
+        let (slf, _) =
+            bincode::decode_from_slice(value, bincode::config::legacy()).map_err(|err| {
+                error!("Deserialization error: {:?}", err);
+                CryptrError::Deserialization("Cannot deserialize EncKeys from given bytes")
+            })?;
         Ok(slf)
     }
 }
@@ -244,7 +245,7 @@ impl EncKeys {
     }
 
     fn into_bytes(self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
+        bincode::encode_to_vec(&self, bincode::config::legacy()).unwrap()
     }
 
     pub fn keys_as_b64(&self) -> Result<String, CryptrError> {
