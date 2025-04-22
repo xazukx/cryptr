@@ -177,7 +177,7 @@ impl EncValueHeader {
     }
 
     pub(crate) fn from_enc_key_id(enc_key_id: String, chunk_size: Option<ChunkSizeKb>) -> Self {
-        let length = 6 + enc_key_id.as_bytes().len();
+        let length = 6 + enc_key_id.len();
         let chunk_size = chunk_size.unwrap_or(ChunkSizeKb::try_from(0).unwrap());
 
         Self {
