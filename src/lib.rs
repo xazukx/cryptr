@@ -3,7 +3,6 @@
 #![doc = include_str!("../README.md")]
 
 use base64::DecodeError;
-use bincode::ErrorKind;
 pub use encryption::ChunkSizeKb;
 pub use keys::EncKeys;
 use std::env::VarError;
@@ -114,20 +113,8 @@ impl From<dotenvy::Error> for CryptrError {
         Self::Generic(value.to_string())
     }
 }
-impl From<std::boxed::Box<bincode::ErrorKind>> for CryptrError {
-    fn from(value: Box<ErrorKind>) -> Self {
-        Self::Generic(value.to_string())
-    }
-}
-
 impl From<base64::DecodeError> for CryptrError {
     fn from(value: DecodeError) -> Self {
-        Self::Generic(value.to_string())
-    }
-}
-
-impl From<rand::Error> for CryptrError {
-    fn from(value: argon2::password_hash::rand_core::Error) -> Self {
         Self::Generic(value.to_string())
     }
 }
