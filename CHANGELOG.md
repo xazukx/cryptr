@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.0
+
+All dependencies have been bumped to the latest versions to fix some security advisories for `ring` and `tokio`.
+The MSRV has been bumped to `1.85.1`.
+
 ## v0.5.1
 
 Adds pub re-exports of the `s3-simple` API with `s3` feature enabled.
