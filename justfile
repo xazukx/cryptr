@@ -7,7 +7,6 @@ version:
     #!/usr/bin/env bash
     echo "v$TAG"
 
-
 # clippy lint + check with minimal versions from nightly
 check:
     #!/usr/bin/env bash
@@ -27,14 +26,12 @@ check:
     echo 'Checking minimal versions'
     cargo minimal-versions check
 
-
 # runs tests without s3
 test:
     #!/usr/bin/env bash
     set -euxo pipefail
     clear
     cargo test
-
 
 # runs the full set of tests
 test-full:
@@ -43,7 +40,6 @@ test-full:
     clear
     cargo test
     cargo test test_file_to_s3_to_file -- --ignored
-
 
 # builds the code
 build:
@@ -58,31 +54,26 @@ build:
 
     #git add out/*
 
-
 # builds binaries
 build-binaries: build
     #!/usr/bin/env bash
     set -euxo pipefail
 
-    cp target/x86_64-unknown-linux-musl/release/cryptr out/cryptr_{{TAG}}
-    cp target/x86_64-pc-windows-gnu/release/cryptr.exe out/cryptr_{{TAG}}.exe
+    cp target/x86_64-unknown-linux-musl/release/cryptr out/cryptr_{{ TAG }}
+    cp target/x86_64-pc-windows-gnu/release/cryptr.exe out/cryptr_{{ TAG }}.exe
 
     git add -f out/*
-
 
 # verifies the MSRV
 msrv-verify:
     cargo msrv verify
 
-
 # find's the new MSRV, if it needs a bump
 msrv-find:
-    cargo msrv --min 1.72.1
-
+    cargo msrv find --min 1.85.1
 
 # verify thats everything is good
 verify: check test-full build msrv-verify
-
 
 # makes sure everything is fine
 verfiy-is-clean: verify
@@ -94,7 +85,6 @@ verfiy-is-clean: verify
 
     echo all good
 
-
 # sets a new git tag and pushes it
 release: verfiy-is-clean build-binaries
     #!/usr/bin/env bash
@@ -102,7 +92,6 @@ release: verfiy-is-clean build-binaries
 
     git tag "v$TAG"
     git push origin "v$TAG"
-
 
 # publishes the current version to cargo.io
 publish: verfiy-is-clean
@@ -113,7 +102,6 @@ publish: verfiy-is-clean
     rm -rf out/*
 
     cargo publish
-
 
 # dry run for publishing to crates.io
 publish-dry: verfiy-is-clean

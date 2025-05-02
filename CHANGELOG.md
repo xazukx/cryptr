@@ -3,6 +3,7 @@
 ## v0.6.0
 
 All dependencies have been bumped to the latest versions to fix some security advisories for `ring` and `tokio`.
+The MSRV has been bumped to `1.85.1`.
 
 ## v0.5.1
 
