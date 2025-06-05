@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.1
+
+2 new helper functions for `EncKeys` have been added, which provide more flexibility when they are handled manually or
+converted between formats:
+
+- `EncKeys::try_parse()`
+- `EncKeys::keys_as_v64_vec()`
+
 ## v0.6.0
 
 All dependencies have been bumped to the latest versions to fix some security advisories for `ring` and `tokio`.
