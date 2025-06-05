@@ -1,7 +1,6 @@
 use crate::utils::{b64_decode, b64_encode, secure_random_alnum, secure_random_vec};
 use crate::value::EncValue;
 use crate::CryptrError;
-use clap::builder::Str;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
