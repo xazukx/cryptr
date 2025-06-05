@@ -275,6 +275,7 @@ impl EncKeys {
         bincode::encode_to_vec(&self, bincode::config::legacy()).unwrap()
     }
 
+    /// All keys merged into a single `String` for usage via ENV vars
     pub fn keys_as_b64(&self) -> Result<String, CryptrError> {
         let mut keys = String::with_capacity(self.enc_keys.len() * 56);
         for (id, key) in &self.enc_keys {
@@ -282,6 +283,14 @@ impl EncKeys {
             writeln!(keys, "{}/{}", id, kb64)?;
         }
         Ok(keys)
+    }
+
+    /// All keys converted to b64 inside a `Vec<_>`.
+    pub fn keys_as_b64_vec(&self) -> Vec<String> {
+        self.enc_keys
+            .iter()
+            .map(|(id, key)| format!("{}/{}", id, b64_encode(key)))
+            .collect::<Vec<_>>()
     }
 
     pub async fn save_to_file(&self, file: &str) -> Result<(), CryptrError> {
