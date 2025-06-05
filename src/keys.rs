@@ -1,6 +1,7 @@
 use crate::utils::{b64_decode, b64_encode, secure_random_alnum, secure_random_vec};
 use crate::value::EncValue;
 use crate::CryptrError;
+use clap::builder::Str;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
@@ -101,6 +102,24 @@ impl TryFrom<&[u8]> for EncKeys {
 
 #[allow(dead_code)]
 impl EncKeys {
+    pub fn try_parse(
+        enc_key_active: String,
+        enc_keys_unparsed: Vec<String>,
+    ) -> Result<Self, CryptrError> {
+        let mut enc_keys = Vec::with_capacity(enc_keys_unparsed.len());
+        for key in enc_keys_unparsed {
+            let Some((id, key_bytes)) = Self::parse_raw_key(&key)? else {
+                continue;
+            };
+            enc_keys.push((id, key_bytes));
+        }
+
+        Ok(Self {
+            enc_key_active,
+            enc_keys,
+        })
+    }
+
     /// Generates and appends a new random encryption key
     pub fn append_new_random(&mut self) -> Result<(), CryptrError> {
         let id = secure_random_alnum(12);
@@ -203,38 +222,12 @@ impl EncKeys {
         let raw_enc_keys = env::var("ENC_KEYS")?;
         let mut enc_keys: Vec<(String, Vec<u8>)> = Vec::with_capacity(2);
 
-        // we need to validate the key ids, since otherwise the parsing might fail from a webauthn cookie
-        let re = RE_KEY_ID.get_or_init(|| Regex::new(r"^[a-zA-Z0-9_-]{2,20}$").unwrap());
-
         for key in raw_enc_keys.split('\n') {
             if !key.is_empty() {
-                let t: (&str, &str) = match key.split_once('/') {
-                    None => continue,
-                    Some(k) => k,
+                let Some((id, key_bytes)) = Self::parse_raw_key(key)? else {
+                    continue;
                 };
-                let id = t.0.trim();
-                let key_raw = t.1.trim();
-
-                if id.is_empty() || key_raw.is_empty() {
-                    return Err(CryptrError::Keys(
-                        "ENC_KEYS must not be empty. Format: \"<id>/<key> <id>/<key>\"",
-                    ));
-                }
-
-                let key_bytes = b64_decode(key_raw)?;
-                if key_bytes.len() != 32 {
-                    return Err(CryptrError::Keys(
-                        "An encryption key must be exactly 32 bytes long",
-                    ));
-                }
-
-                if !re.is_match(id) {
-                    return Err(CryptrError::Keys(
-                        "The IDs for ENC_KEYS must match '^[a-zA-Z0-9_-]{2,20}$'",
-                    ));
-                }
-
-                enc_keys.push((id.to_string(), key_bytes));
+                enc_keys.push((id, key_bytes));
             }
         }
 
@@ -242,6 +235,41 @@ impl EncKeys {
             enc_key_active,
             enc_keys,
         })
+    }
+
+    fn parse_raw_key(input: &str) -> Result<Option<(String, Vec<u8>)>, CryptrError> {
+        // we need to validate the key ids, since otherwise the parsing might fail from a webauthn cookie
+        let re = RE_KEY_ID.get_or_init(|| Regex::new(r"^[a-zA-Z0-9_-]{2,20}$").unwrap());
+
+        let t: (&str, &str) = match input.split_once('/') {
+            None => {
+                return Ok(None);
+            }
+            Some(k) => k,
+        };
+        let id = t.0.trim();
+        let key_raw = t.1.trim();
+
+        if id.is_empty() || key_raw.is_empty() {
+            return Err(CryptrError::Keys(
+                "ENC_KEYS must not be empty. Format: \"<id>/<key> <id>/<key>\"",
+            ));
+        }
+
+        let key_bytes = b64_decode(key_raw)?;
+        if key_bytes.len() != 32 {
+            return Err(CryptrError::Keys(
+                "An encryption key must be exactly 32 bytes long",
+            ));
+        }
+
+        if !re.is_match(id) {
+            return Err(CryptrError::Keys(
+                "The IDs for ENC_KEYS must match '^[a-zA-Z0-9_-]{2,20}$'",
+            ));
+        }
+
+        Ok(Some((id.to_string(), key_bytes)))
     }
 
     fn into_bytes(self) -> Vec<u8> {
@@ -487,15 +515,17 @@ mod tests {
     #[tokio::test]
     #[ignore] // Overlaps with the from file test case
     async fn test_enc_from_env() {
-        env::set_var("ENC_KEY_ACTIVE", "zQac11NaE0Nn");
-        env::set_var(
-            "ENC_KEYS",
-            r#"
-zQac11NaE0Nn/UZFxllgmmnA5KzBr7A6uS+p/ccLe2/L4M4Vs3CMhwQg=
-nlL1mQjkQH58/lPfvTp7RojBOU8aNzZrfYQ44ykm0SR/DaZmvMZMmXkY=
-26VvcHiaJP26/Cu8I2NEzD2tjKV+2Tl6Dwx2tkPOMyolYP1ydTcN+hik=
-"#,
-        );
+        unsafe {
+            env::set_var("ENC_KEY_ACTIVE", "zQac11NaE0Nn");
+            env::set_var(
+                "ENC_KEYS",
+                r#"
+    zQac11NaE0Nn/UZFxllgmmnA5KzBr7A6uS+p/ccLe2/L4M4Vs3CMhwQg=
+    nlL1mQjkQH58/lPfvTp7RojBOU8aNzZrfYQ44ykm0SR/DaZmvMZMmXkY=
+    26VvcHiaJP26/Cu8I2NEzD2tjKV+2Tl6Dwx2tkPOMyolYP1ydTcN+hik=
+    "#,
+            );
+        }
 
         let keys = EncKeys::from_env().unwrap();
         assert_eq!(keys.enc_key_active.as_str(), "zQac11NaE0Nn");
