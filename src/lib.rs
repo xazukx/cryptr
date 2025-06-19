@@ -23,7 +23,7 @@ pub use stream::writer::{file_writer::FileWriter, memory_writer::MemoryWriter, S
 pub use value::{EncAlg, EncValue, EncValueHeader, EncVersion};
 
 pub mod encryption;
-pub(crate) mod kdf;
+pub mod kdf;
 /// Encryption Keys
 pub mod keys;
 /// Streaming encryption / decryption

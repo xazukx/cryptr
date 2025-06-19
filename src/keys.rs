@@ -1,3 +1,4 @@
+use crate::kdf::KdfValue;
 use crate::utils::{b64_decode, b64_encode, secure_random_alnum, secure_random_vec};
 use crate::value::EncValue;
 use crate::CryptrError;
@@ -96,6 +97,15 @@ impl TryFrom<&[u8]> for EncKeys {
                 CryptrError::Deserialization("Cannot deserialize EncKeys from given bytes")
             })?;
         Ok(slf)
+    }
+}
+
+impl From<KdfValue> for EncKeys {
+    fn from(kdf: KdfValue) -> Self {
+        Self {
+            enc_key_active: kdf.enc_key_value(),
+            enc_keys: vec![(kdf.enc_key_value(), kdf.value())],
+        }
     }
 }
 
@@ -518,6 +528,8 @@ impl EncKeys {
 
 #[cfg(test)]
 mod tests {
+    use argon2::Params;
+
     use super::*;
 
     #[tokio::test]
@@ -591,5 +603,35 @@ mod tests {
         assert!(
             cfg_value.contains("bVCyTsGaggVy5yqQ/UzluN29DZW41M3hTSkx6Y3NtZmRuQkR2TnJxUTYzcjQ=\n")
         );
+    }
+
+    #[test]
+    fn test_from_kdf_value () {
+        let kdf_value = KdfValue::new("123");
+        let id = kdf_value.enc_key_value();
+        let enc_keys = EncKeys::from(kdf_value);
+
+        assert_eq!(enc_keys.enc_key_active, id);
+        assert_eq!(enc_keys.enc_keys.len(), 1);
+    }
+
+    #[test]
+    fn test_from_kdf_value_with_params() {
+        let params = Params::new(Params::MIN_M_COST, 5, 1, Some(32)).unwrap();
+        let kdf_value = KdfValue::new_with_params("123", params);
+        let id1 = kdf_value.enc_key_value();
+        let enc_keys1 = EncKeys::from(kdf_value);
+        assert_eq!(enc_keys1.enc_key_active, id1);
+        assert_eq!(enc_keys1.enc_keys.len(), 1);
+        
+        // Check that it's not the same as the default params with the same password
+        let kdf_value = KdfValue::new("123");
+        let id2 = kdf_value.enc_key_value();
+        let enc_keys2 = EncKeys::from(kdf_value);
+        assert_eq!(enc_keys2.enc_key_active, id2);
+        assert_eq!(enc_keys2.enc_keys.len(), 1);
+        
+        assert_ne!(enc_keys1.enc_key_active, enc_keys2.enc_key_active);
+        assert_ne!(enc_keys1.into_bytes(), enc_keys2.into_bytes());
     }
 }

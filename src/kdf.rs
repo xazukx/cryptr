@@ -1,8 +1,9 @@
 use argon2::{Algorithm, Argon2, Params, Version};
 
-static M_COST: u32 = 32768;
-static T_COST: u32 = 4;
-static P_COST: u32 = 4;
+const M_COST: u32 = 32768;
+const T_COST: u32 = 4;
+const P_COST: u32 = 4;
+const OUTPUT_LEN: usize = 32;
 
 #[derive(Debug)]
 pub struct KdfValue {
@@ -17,7 +18,7 @@ impl KdfValue {
     /// The result of hashing will always be same!
     /// This is only intended for generating enc keys, which must be always the same!
     pub fn new(password: &str) -> Self {
-        let params = Params::new(M_COST, T_COST, P_COST, Some(32)).unwrap();
+        let params = Params::new(M_COST, T_COST, P_COST, Some(OUTPUT_LEN)).unwrap();
         Self::new_with_params(password, params)
     }
 
@@ -25,18 +26,21 @@ impl KdfValue {
     /// The result of hashing will always be same!
     /// This is only intended for generating enc keys, which must be always the same!
     pub fn new_with_params(password: &str, params: Params) -> Self {
+        let m_cost = params.m_cost();
+        let t_cost = params.t_cost();
+        let p_cost = params.p_cost();
         let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
-        let mut buf = [0u8; 32];
+        let mut buf = [0u8; OUTPUT_LEN];
         argon2
             .hash_password_into(password.as_bytes(), b"00000000", &mut buf)
             .expect("password hash kdf to success");
 
         Self {
             value: buf.to_vec(),
-            m_cost: M_COST,
-            t_cost: T_COST,
-            p_cost: P_COST,
+            m_cost,
+            t_cost,
+            p_cost,
         }
     }
 
@@ -57,7 +61,7 @@ impl KdfValue {
         let t_cost = split.next()?.parse::<u32>().ok()?;
         let p_cost = split.next()?.parse::<u32>().ok()?;
 
-        let params = Params::new(m_cost, t_cost, p_cost, Some(32)).ok()?;
+        let params = Params::new(m_cost, t_cost, p_cost, Some(OUTPUT_LEN)).ok()?;
         Some(params)
     }
 
